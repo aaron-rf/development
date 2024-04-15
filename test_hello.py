@@ -22,3 +22,19 @@ def get_random_prime():
 
 def test_divisible_by_2(get_random_prime):
     assert get_random_prime % 2 != 0
+
+
+class TestClass:
+    property_1 = None
+
+    @pytest.fixture(autouse=True, scope="class")
+    def setup(self):
+        print("Setup called!")
+        self.property_1 = 2
+
+    def test_one(self, setup):
+        assert self.property_1 * 5 == 10
+
+    def test_two(self, setup):
+        self.property_1 = self.property_1 * 2
+        assert self.property_1 == 4
