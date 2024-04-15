@@ -1,5 +1,6 @@
 from hello import *
 
+import pytest
 
 def test_add():
     result = add(1, 2)
@@ -8,7 +9,7 @@ def test_add():
 
 @pytest.mark.parametrize("a, b, result_expected", [(2, 4, 8), (3, 0, 0), (-1, 2, -2)])
 def test_multiply(a, b, result_expected):
-    result = multiply(2, 4)
+    result = multiply(a, b)
     assert result == result_expected
 
 
@@ -27,7 +28,7 @@ def test_divisible_by_2(get_random_prime):
 class TestClass:
     property_1 = None
 
-    @pytest.fixture(autouse=True, scope="class")
+    @pytest.fixture(autouse=True)
     def setup(self):
         print("Setup called!")
         self.property_1 = 2
