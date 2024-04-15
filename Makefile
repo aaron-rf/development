@@ -4,11 +4,11 @@ install:
 		pip instal l-r requirements.txt
 
 test:
-	python -m pytest -vv *.py
+	python -m pytest -vv tests/*.py
 
 format:
-	black *.py
+	black development/*.py
 
 lint: 
-	pylint *.py
+	pylint --disable=C0114,C0115,C0116 development/*.py
 
