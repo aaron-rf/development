@@ -1,22 +1,23 @@
-
-
 ### Pipelines ###
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.linear_model import LinearRegression
-from sklearn.datasets import load_iris()
+from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
-from sklearn.compose import FeatureUnion
+from sklearn.pipeline import FeatureUnion
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
+import pandas as pd
 
 
 # Changing the return value of all transformers to return a dataframe instead of a NumPy array
 from sklearn import set_config
+
 set_config(transform_output="pandas")
+
 
 # Custom Preprocessing Function
 class MovingAverage(BaseEstimator, TransformerMixin):
@@ -28,8 +29,10 @@ class MovingAverage(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        return X.rolling(window=self.window, min_perios=1, center=False).mean()
+        return X.rolling(window=self.window, min_periods=1, center=False).mean()
 
+
+"""
 pipeline = Pipeline(
     steps=[
         ("ma", MovingAverage(window=30)),
@@ -39,31 +42,30 @@ pipeline = Pipeline(
     ]
 )
 
-X, y = load_iris(return_X_y=True)
+data_iris = load_iris()
 columns = ["SepalLengthCm", "SepalWidthCm", "PetalLengthCm", "PetalWidthCm"]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y)
-pipeline.fit(X_train, y_train)
-y_pred = pipeline.predict(X_test)
+df = pd.DataFrame(data_iris["data"], columns=columns)
+pipeline.fit(df[columns], data_iris.target)
+y_pred = pipeline.predict(df[columns])
 
 # Accessing parameters of the pipeline's elements
 # <estimator>__<parameter>
 # Setting parameters of the pipeline's elemeents
 # pipeline.set_params(pipeline__ma_window=7)
 
+"""
 try_transforming_target = False
 if try_transforming_target:
     regressor = TransformedTargetRegressor(
-        regressor=LinearRegression(),
-        func=np.log1p,
-        inverse_func=np.expm1
+        regressor=LinearRegression(), func=np.log1p, inverse_func=np.expm1
     )
 
     pipeline = Pipeline(
         steps=[
             ("imputer", SimpleImputer()),
             ("scaler", MinMaxScaler()),
-            ("regressor", regressor)
+            ("regressor", regressor),
         ]
     )
     X, y = load_iris(return_X_y=True)
@@ -77,23 +79,19 @@ if try_transforming_target:
 try_combining_features = False
 if try_combining_features:
     numerical_pipeline = Pipeline(
-        steps=[
-            ("imputation", SimpleImputer()),
-            ("scaling", MinMaxScaler())
-        ]
+        steps=[("imputation", SimpleImputer()), ("scaling", MinMaxScaler())]
     )
 
     preprocessor = (
         FeatureUnion(
             [
                 ("moving_Average", MovingAverage(window=30)),
-                ("numerical", numerical_pipeline)
+                ("numerical", numerical_pipeline),
             ]
         ),
     )
 
     pipeline = Pipeline(steps=["preprocessing", preprocessor])
-
 
 
 try_choosing_columns = False
@@ -103,47 +101,40 @@ if try_choosing_columns:
     )
     categorical_transformer = ColumnTransformer(
         transformers=[("encode", OneHotEncoder(), ["col_name"])],
-        remainder="passthrough"
+        remainder="passthrough",
     )
     categorical_transformer = ColumnTransformer(
         transformers=[("encode", OneHotEncoder(), ["col_name"])],
-        remainder=MinMaxScaler()
+        remainder=MinMaxScaler(),
     )
 
-    pipeline = Pipeline(
-        steps=[
-            ("categorical", categorical_transformer, ["col_name"])
-        ]
-    )
-
+    pipeline = Pipeline(steps=[("categorical", categorical_transformer, ["col_name"])])
 
     categorical_transformer = Pipeline(steps=[("encode", OneHotEncoder)])
     numerical_transformer = Pipeline(
-        steps=[("imputation", SimpleImputer()),
-               ("scaling", MinMaxScaler())]
+        steps=[("imputation", SimpleImputer()), ("scaling", MinMaxScaler())]
     )
     preprocessor = ColumnTransformer(
         transformers=[
             ("numeric", numerical_transformer),
-            ("categoric", categorical_transformer, ["col_name"])
+            ("categoric", categorical_transformer, ["col_name"]),
         ]
     )
-    pipeline =Pipeline(steps=["preprocessing", preprocessor])
+    pipeline = Pipeline(steps=["preprocessing", preprocessor])
 
 
 try_making_pipelines = False
 if try_making_pipelines:
     pipeline = Pipeline(
-        steps=[("imputer", SimpleImputer()),
-               ("scaler", MinMaxScaler()),
-               ("regression", LinearRegression())]
+        steps=[
+            ("imputer", SimpleImputer()),
+            ("scaler", MinMaxScaler()),
+            ("regression", LinearRegression()),
+        ]
     )
 
     # Also, we can create a pipeline with `make_pipeline`
-    pipeline = make_pipeline(
-        steps=[SimpleImputer(), MinMaxScaler(), LinearRegression()]
-    )
-
+    pipeline = make_pipeline(*[SimpleImputer(), MinMaxScaler(), LinearRegression()])
 
     X, y = load_iris(return_X_y=True)
     columns = ["SepalLengthCm", "SepalWidthCm", "PetalLengthCm", "PetalWidthCm"]
@@ -151,13 +142,8 @@ if try_making_pipelines:
     X_train, X_test, y_train, y_test = train_test_split(X, y)
     pipeline.fit(X_train, y_train)
     y_pred = pipeline.predict(X_test)
-### End Pipelines0 ###
+### End Pipelines ###
 
-pipeline.fit(X_train, y_train)
-y_pred = pipeline.predict(X_test)
-
-import sys
-sys.exit(0)
 
 ### Custom Transformers ###
 import pandas as pd
@@ -288,7 +274,6 @@ if try_using_function_transformer_real_data:
     y = load_iris()["target"].copy()
     outlier_remover = FunctionTransformer(outlier_removal)
 
-
     pipeline = Pipeline(
         steps=[
             ["outlier_removal", outlier_remover],
@@ -309,8 +294,9 @@ if try_using_function_transformer_real_data:
         "regressor__C": [0.01, 0.1, 1, 10, 100],
     }
 
-
-    gs = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring="accuracy", cv=3)
+    gs = GridSearchCV(
+        estimator=pipeline, param_grid=param_grid, scoring="accuracy", cv=3
+    )
     gs.fit(X, y)
     print(gs.best_params_)
 ### End Custom Transformers ###
