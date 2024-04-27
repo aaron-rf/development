@@ -1,3 +1,134 @@
+### Custom Estimator ###
+from sklearn.base import BaseEstimator, clone
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.ensemble import VotingClassifier
+from imblearn.pipeline import make_pipeline as make_imb_pipeline
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn.datasets import load_breast_cancer
+from sklearn.metrics import classification_report, RocCurveDisplay, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+
+
+
+class ResampledEnsemble(BaseEstimator):
+    def __init__(self, base_estimator=DecisionTreeClassifier(),
+                 n_estimators=100, max_depth=None, max_features=None, 
+                 min_samples_split=2, min_samples_leaf=1):
+        self._estimator_type = "classifier"
+        self.base_etimator = base_estimator
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.max_features = max_features
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.estimators = self._generate_estimators()
+
+        self.estimator = VotingClassifier(self.estimators, voting="soft")
+        
+    def _generate_estimators(self):
+        estimators = []
+        for i in range(self.n_estimators):
+            est = clone(self.base_etimator)
+            est.random_state = i 
+            est.max_depth = self.max_depth
+            est.max_features = self.max_features
+            est.min_saples_split = self.min_samples_split
+            est.min_samples_leaf = self.min_samples_leaf
+            pipe = make_imb_pipeline(
+                RandomUnderSampler(random_state=i, replacement=True), 
+                est
+            )
+        return estimators
+    
+    def fit(self, X, y, sample_weight=None):
+        return self.estimator.fit(X, y, sample_weight)
+    
+    def predict(self, X):
+        return self.estimator.predict(X)
+    
+    def classes_(self):
+        if self.estimator:
+            return self.estimator.classes_
+        
+    def set_params(self, **params):
+        if not params:
+            return self 
+
+        for key, value in params.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                self.kwargs[key] = value
+        self.estimators = self._generate_estimators()
+        self.estimator = VotingClassifier(self.estimators, voting="soft")
+        return self 
+    
+
+
+def set_params(self, **params):
+    if not params:
+        return self
+
+    for key, value in params.items():
+        if hasattr(self, key):
+            setattr(self, key, value)
+        else:
+            self.kwargs[key] = value
+
+
+
+data = load_breast_cancer(as_frame=True)
+X_train, X_test, y_train, y_test = train_test_split(data.data, data.train, 
+                                                    random_state=0)
+res_ensemb = ResampledEnsemble()
+res_ensemb.fit(X_train, y_train)
+y_pred = res_ensemb.predict(X_test)
+print(
+    classification_report(y_test, y_pred)
+)
+
+
+fig, ax = plt.subplots()
+RocCurveDisplay(res_ensemb, X_test, y_test, ax=ax)
+fig.show()
+
+fig, ax = plt.subplots()
+ConfusionMatrixDisplay(res_ensemb, X_test, y_test, display_labels=[0, 1, 2],
+                       cmap = plt.cm.GnBu, normalize=None, ax=ax)
+fig.show()
+
+fig, ax = plt.subplots()
+ConfusionMatrixDisplay(res_ensemb, X_test, y_test, display_labels=[0, 1, 2],
+                       cmap=plt.cm.GnBu, normalize="true", ax=ax
+)
+fig.show()
+
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+from sklearn.model_selection import GridSearchCV
+pipe = make_pipeline(SimpleImputer(missing_values=np.nan, strategy="mean"),
+                     MinMaxScaler(), 
+                     ResampledEnsemble(
+                         max_features="auto", min_samples_split=0.01,
+                         min_samples_leaf=0.0001, n_estimators=300
+                         ),                                     
+                    )
+grid_params = {
+    "resampledensemble__max_depth": np.linspace(5, 40, 3, 
+                                                endpoint=True, dtype=int)
+}
+grid = GridSearchCV(pipe, grid_params, cv=4, return_train_score=True,
+                    n_jobs=-1, scoring="f1_macro")
+grid.fit(X_train, y_train)
+best_score = grid.best_score_
+best_params = grid.best_params_
+print(best_score)
+print(best_params)
+
+### End Custom Estimator ###
+
 ### Pipelines ###
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline, make_pipeline
