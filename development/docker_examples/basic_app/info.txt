@@ -1,0 +1,16 @@
+Build the docker image
+- docker build -t myflaskapp .
+
+
+List the docker images
+- docker images
+
+
+Run the docker images
+- docker run -p 5000:5000 myflaskapp
+
+
+Push the docker image to DuckerHub
+- docker push <username>/<reponame>:tagname
+- docker push my_name/myflaskapp:mytag
+

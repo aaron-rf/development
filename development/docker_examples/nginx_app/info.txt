@@ -1,0 +1,11 @@
+Check if a port is open
+- sudo nc localhost 56733 < /dev/null; echo $?
+
+Creating the container
+- sudo bash start.sh
+
+List running containers
+- sudo docker ps
+
+Rebuild the container
+- sudo docker stop docker.test && sudo docker start docker.test
